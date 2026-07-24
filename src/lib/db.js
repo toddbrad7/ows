@@ -122,7 +122,37 @@ export async function addTastingEvent(ev) {
   return fromEventRow(data)
 }
 
-// ── Storage Locations ─────────────────────────────────────────────────────────
+// Edit an existing tasting record — corrects the experiential facts (date, rating,
+// WSET perceptions, notes, pairing, occasion) WITHOUT touching wine inventory,
+// since consumption already happened; this only fixes how it was recorded.
+export async function updateTastingEvent(id, ev) {
+  const row = {}
+  if (ev.tastedAt            !== undefined) row.tasted_at           = ev.tastedAt
+  if (ev.rating              !== undefined) row.rating              = ev.rating
+  if (ev.occasion            !== undefined) row.occasion            = ev.occasion
+  if (ev.notes               !== undefined) row.notes               = ev.notes
+  if (ev.foodPairing         !== undefined) row.food_pairing        = ev.foodPairing
+  if (ev.sweetnessPerceived  !== undefined) row.sweetness_perceived = ev.sweetnessPerceived
+  if (ev.intensityPerceived  !== undefined) row.intensity_perceived = ev.intensityPerceived
+  if (ev.sweetnessWset       !== undefined) row.sweetness_wset      = ev.sweetnessWset
+  if (ev.intensityWset       !== undefined) row.intensity_wset      = ev.intensityWset
+  if (ev.bodyWset            !== undefined) row.body_wset           = ev.bodyWset
+  if (ev.acidWset            !== undefined) row.acid_wset           = ev.acidWset
+  if (ev.tanninWset          !== undefined) row.tannin_wset         = ev.tanninWset
+  const { data, error } = await supabase
+    .from('tasting_events')
+    .update(row)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return fromEventRow(data)
+}
+
+export async function deleteTastingEvent(id) {
+  const { error } = await supabase.from('tasting_events').delete().eq('id', id)
+  if (error) throw error
+}
 export async function getStorageLocations() {
   const { data, error } = await supabase
     .from('storage_locations')

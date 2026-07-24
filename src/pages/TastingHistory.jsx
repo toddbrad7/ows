@@ -1,27 +1,11 @@
 import { useCellar } from '../hooks/useCellar.jsx'
 import RadarChart from '../components/RadarChart.jsx'
-import { WSET_5, WSET_BODY, WSET_SWEETNESS, wsetPct } from '../lib/presets.js'
-
-// Build a mathematical taste profile (0-100 per axis) from consumed wines' WSET scales.
-function buildTasteProfile(events) {
-  const withProfile = events.filter(e => e.intensityWset || e.bodyWset || e.tanninWset || e.acidWset || e.sweetnessWset)
-  if (!withProfile.length) return null
-  const avg = (scale, key) => {
-    const vals = withProfile.map(e => e[key]).filter(Boolean).map(v => wsetPct(scale, v))
-    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 50
-  }
-  return {
-    Sweetness: avg(WSET_SWEETNESS, 'sweetnessWset'),
-    Intensity: avg(WSET_5, 'intensityWset'),
-    Body:      avg(WSET_BODY, 'bodyWset'),
-    Acidity:   avg(WSET_5, 'acidWset'),
-    Tannin:    avg(WSET_5, 'tanninWset'),
-  }
-}
+import { computeTasteProfile, LIKED_RATING_THRESHOLD } from '../lib/presets.js'
 
 export default function TastingHistory() {
   const { events } = useCellar()
-  const profile = buildTasteProfile(events)
+  const profile = computeTasteProfile(events)
+  const excludedCount = events.filter(e => e.rating && e.rating < LIKED_RATING_THRESHOLD).length
 
   const byMonth = events.reduce((a, e) => {
     const m = (e.tastedAt || '').slice(0, 7) || '?'
@@ -43,12 +27,19 @@ export default function TastingHistory() {
             { label: 'Tannin',    pct: profile.Tannin },
           ]} />
           <div style={{ flex: 1, minWidth: 220 }}>
-            <div className="sec-label">Your Taste Profile</div>
+            <div className="sec-label">Your Palate Profile</div>
             <p className="muted" style={{ fontSize: '.86rem', lineHeight: 1.6 }}>
-              Built from {events.length} tasting{events.length !== 1 ? 's' : ''} using Body, Tannin, Acidity, Sweetness, and Intensity on the WSET scale.
-              Used by Recommendations to distinguish wines <strong>Within Your Profile</strong> from ones <strong>Outside Your Profile</strong>.
+              Built from <strong>{profile.sampleSize}</strong> wine{profile.sampleSize !== 1 ? 's' : ''} you rated {LIKED_RATING_THRESHOLD}★ or higher — using Body, Tannin, Acidity, Sweetness, and Intensity on the WSET scale.
+              {excludedCount > 0 && <> {excludedCount} wine{excludedCount !== 1 ? 's' : ''} rated below {LIKED_RATING_THRESHOLD}★ {excludedCount !== 1 ? 'were' : 'was'} intentionally excluded — they tell us what you don't like, not what to recommend more of.</>}
             </p>
+            <p className="muted" style={{ fontSize: '.8rem', marginTop: 8 }}>This exact profile feeds your AI Sommelier and Recommendations — so you won't be pointed toward wines that clash with what you've actually enjoyed.</p>
           </div>
+        </div>
+      )}
+
+      {!profile && events.length > 0 && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <p className="muted">No wines rated {LIKED_RATING_THRESHOLD}★ or higher yet — rate a few tastings you enjoyed to build your palate profile.</p>
         </div>
       )}
 

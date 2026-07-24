@@ -1,9 +1,17 @@
 // Pure SVG radar chart — no charting library dependency.
 // axes: [{ label, pct (0-100) }] in clockwise order starting at top.
-export default function RadarChart({ axes, size = 220, color = '#8e3a35' }) {
+//
+// The viewBox is deliberately larger than the drawn circle (extra margin on
+// all sides) so axis labels — which sit OUTSIDE the data rings — always have
+// room to render fully, even at the very top/left/right edges. Without this
+// margin, labels like "Sweetness" (top) and "Tannin" (far left) get clipped
+// by the SVG's own bounds.
+export default function RadarChart({ axes, size = 260, color = '#8e3a35' }) {
   const cx = size / 2, cy = size / 2
-  const r  = size * 0.36
-  const n  = axes.length
+  const r  = size * 0.3
+  const margin = 34
+  const viewSize = size + margin * 2
+  const n = axes.length
   const angleFor = i => (Math.PI * 2 * i) / n - Math.PI / 2
 
   const pointFor = (i, pct) => {
@@ -17,7 +25,11 @@ export default function RadarChart({ axes, size = 220, color = '#8e3a35' }) {
   const dataPath = dataPoints.map(p => p.join(',')).join(' ')
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+    <svg
+      viewBox={`${-margin} ${-margin} ${viewSize} ${viewSize}`}
+      width={size} height={size}
+      style={{ overflow: 'visible' }}
+    >
       {/* Background rings */}
       {ringLevels.map(lv => {
         const pts = axes.map((_, i) => {
@@ -37,8 +49,8 @@ export default function RadarChart({ axes, size = 220, color = '#8e3a35' }) {
       {/* Labels */}
       {axes.map((ax, i) => {
         const a = angleFor(i)
-        const lx = cx + (r + 22) * Math.cos(a)
-        const ly = cy + (r + 22) * Math.sin(a)
+        const lx = cx + (r + 24) * Math.cos(a)
+        const ly = cy + (r + 24) * Math.sin(a)
         return (
           <text key={ax.label} x={lx} y={ly} fontSize="11" fontWeight="600" fill="#4a3c34"
             textAnchor={Math.cos(a) > 0.3 ? 'start' : Math.cos(a) < -0.3 ? 'end' : 'middle'}

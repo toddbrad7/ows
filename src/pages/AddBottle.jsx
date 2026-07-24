@@ -127,6 +127,9 @@ export default function AddBottle({ nav, editWine }) {
                 </label>
                 <label className="flabel"><span>Subregion / Appellation</span><input className="inp" value={form.subregion} placeholder="Margaux…" onChange={e => set('subregion', e.target.value)} /></label>
                 {form.lat && <div className="coords-note fw">📌 Coordinates set: {(+form.lat).toFixed(2)}, {(+form.lng).toFixed(2)}</div>}
+                <label className="flabel"><span>Latitude <span className="muted" style={{ fontWeight: 400 }}>(manual override)</span></span><input className="inp" type="number" step="0.0001" placeholder="e.g. 44.84" value={form.lat ?? ''} onChange={e => set('lat', e.target.value === '' ? null : +e.target.value)} /></label>
+                <label className="flabel"><span>Longitude <span className="muted" style={{ fontWeight: 400 }}>(manual override)</span></span><input className="inp" type="number" step="0.0001" placeholder="e.g. -0.58" value={form.lng ?? ''} onChange={e => set('lng', e.target.value === '' ? null : +e.target.value)} /></label>
+                <p className="muted fw" style={{ fontSize: '.76rem' }}>💡 If your region isn't in the autocomplete list, this wine won't appear on the Dashboard map unless you set coordinates here. Tip: search "[place name] latitude longitude" or right-click the spot on Google Maps and copy the two numbers shown.</p>
               </div>
             </div>
 

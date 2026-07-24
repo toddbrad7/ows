@@ -8,19 +8,47 @@ export const REGIONS = {
   'Rhône Valley, France':      { lat: 44.93, lng:   4.82 },
   'Provence, France':          { lat: 43.53, lng:   5.44 },
   'Loire Valley, France':      { lat: 47.39, lng:   0.69 },
+  'Languedoc, France':         { lat: 43.61, lng:   3.88 },
+  'Beaujolais, France':        { lat: 46.14, lng:   4.68 },
+  'Jura, France':              { lat: 46.68, lng:   5.65 },
   'Napa Valley, USA':          { lat: 38.29, lng: -122.29 },
   'Sonoma, USA':               { lat: 38.51, lng: -122.73 },
   'Willamette Valley, USA':    { lat: 45.29, lng: -123.05 },
+  'Finger Lakes, USA':         { lat: 42.60, lng:  -76.90 },
+  'Columbia Valley, USA':      { lat: 46.30, lng: -119.60 },
+  'Texas Hill Country, USA':   { lat: 30.30, lng:  -98.90 },
   'Piedmont, Italy':           { lat: 44.70, lng:   8.04 },
   'Tuscany, Italy':            { lat: 43.77, lng:  11.25 },
   'Sicily, Italy':             { lat: 37.60, lng:  14.01 },
+  'Veneto, Italy':             { lat: 45.44, lng:  11.87 },
+  'Etna, Italy':               { lat: 37.75, lng:  15.00 },
   'Rioja, Spain':              { lat: 42.47, lng:  -2.45 },
   'Priorat, Spain':            { lat: 41.19, lng:   0.76 },
+  'Jerez, Spain':              { lat: 36.68, lng:  -6.14 },
+  'Ribera del Duero, Spain':   { lat: 41.68, lng:  -3.69 },
   'Douro, Portugal':           { lat: 41.16, lng:  -7.79 },
+  'Vinho Verde, Portugal':     { lat: 41.55, lng:  -8.42 },
+  'Setúbal, Portugal':         { lat: 38.52, lng:  -8.89 },
+  'Mosel, Germany':            { lat: 49.97, lng:   6.95 },
+  'Rheingau, Germany':         { lat: 50.03, lng:   7.95 },
+  'Pfalz, Germany':            { lat: 49.33, lng:   8.11 },
+  'Wachau, Austria':           { lat: 48.37, lng:  15.50 },
+  'Tokaj, Hungary':            { lat: 48.12, lng:  21.42 },
+  'Santorini, Greece':         { lat: 36.39, lng:  25.46 },
   'Mendoza, Argentina':        { lat: -32.89, lng: -68.84 },
+  'Uco Valley, Argentina':     { lat: -33.65, lng: -69.20 },
+  'Casablanca Valley, Chile':  { lat: -33.32, lng: -71.42 },
+  'Colchagua Valley, Chile':   { lat: -34.64, lng: -71.30 },
   'Barossa Valley, Australia': { lat: -34.54, lng: 138.96 },
+  'Margaret River, Australia': { lat: -33.95, lng: 115.07 },
+  'Yarra Valley, Australia':   { lat: -37.65, lng: 145.45 },
   'Marlborough, New Zealand':  { lat: -41.51, lng: 173.96 },
+  'Central Otago, New Zealand':{ lat: -45.03, lng: 169.15 },
+  "Hawke's Bay, New Zealand":  { lat: -39.49, lng: 176.85 },
   'Swartland, South Africa':   { lat: -33.38, lng:  18.88 },
+  'Stellenbosch, South Africa':{ lat: -33.93, lng:  18.86 },
+  'Walker Bay, South Africa':  { lat: -34.42, lng:  19.30 },
+  'Okanagan Valley, Canada':   { lat: 49.35, lng: -119.60 },
 }
 
 export const PRESETS = [
@@ -59,6 +87,54 @@ export const WSET_FIELDS = [
 // Numeric position (0-based index) used for radar chart math / "distance" comparisons
 export const wsetIndex = (scale, val) => Math.max(0, scale.indexOf(val))
 export const wsetPct   = (scale, val) => (wsetIndex(scale, val) / (scale.length - 1)) * 100
+
+// Only tastings you actually enjoyed (3★ or higher) count toward your palate profile.
+// A wine you rated 1-2★ tells us what you DON'T like — including it would drag
+// recommendations toward things you've already told us to avoid.
+export const LIKED_RATING_THRESHOLD = 3
+
+export function likedEvents(events) {
+  return events.filter(e => (e.rating || 0) >= LIKED_RATING_THRESHOLD)
+}
+
+// Canonical taste profile — same math used by the Tasting History radar chart
+// AND by the AI Sommelier/Recommendations system prompt, so what you see and what
+// Claude reasons over are always identical.
+export function computeTasteProfile(events) {
+  const liked = likedEvents(events)
+  if (!liked.length) return null
+  const avg = (scale, key) => {
+    const vals = liked.map(e => e[key]).filter(Boolean).map(v => wsetPct(scale, v))
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 50
+  }
+  return {
+    sampleSize: liked.length,
+    Sweetness: avg(WSET_SWEETNESS, 'sweetnessWset'),
+    Intensity: avg(WSET_5, 'intensityWset'),
+    Body:      avg(WSET_BODY, 'bodyWset'),
+    Acidity:   avg(WSET_5, 'acidWset'),
+    Tannin:    avg(WSET_5, 'tanninWset'),
+  }
+}
+
+// Dominant WSET label per axis (for text prompts to Claude) — same 3★+ filter.
+export function dominantWsetProfile(events) {
+  const liked = likedEvents(events)
+  const mode = key => {
+    const counts = {}
+    liked.forEach(e => { if (e[key]) counts[e[key]] = (counts[e[key]] || 0) + 1 })
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
+    return entries[0]?.[0] || null
+  }
+  return {
+    sampleSize:    liked.length,
+    sweetnessWset: mode('sweetnessWset'),
+    intensityWset: mode('intensityWset'),
+    bodyWset:      mode('bodyWset'),
+    acidWset:      mode('acidWset'),
+    tanninWset:    mode('tanninWset'),
+  }
+}
 
 export const OCCASIONS = [
   'Dinner at home', 'Restaurant', 'Wine tasting',

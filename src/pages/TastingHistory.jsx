@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useCellar } from '../hooks/useCellar.jsx'
 import RadarChart from '../components/RadarChart.jsx'
+import EditTastingModal from '../components/EditTastingModal.jsx'
 import { computeTasteProfile, LIKED_RATING_THRESHOLD } from '../lib/presets.js'
 
 export default function TastingHistory() {
   const { events } = useCellar()
+  const [editing, setEditing] = useState(null)
   const profile = computeTasteProfile(events)
   const excludedCount = events.filter(e => e.rating && e.rating < LIKED_RATING_THRESHOLD).length
 
@@ -26,7 +29,7 @@ export default function TastingHistory() {
             { label: 'Acidity',   pct: profile.Acidity },
             { label: 'Tannin',    pct: profile.Tannin },
           ]} />
-          <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
             <div className="sec-label">Your Palate Profile</div>
             <p className="muted" style={{ fontSize: '.86rem', lineHeight: 1.6 }}>
               Built from <strong>{profile.sampleSize}</strong> wine{profile.sampleSize !== 1 ? 's' : ''} you rated {LIKED_RATING_THRESHOLD}★ or higher — using Body, Tannin, Acidity, Sweetness, and Intensity on the WSET scale.
@@ -56,6 +59,7 @@ export default function TastingHistory() {
                     {e.rating ? <span className="stars">{'★'.repeat(e.rating)}</span> : null}
                     <span className="muted">{e.tastedAt}</span>
                     {e.occasion ? <span className="badge b-sty">{e.occasion}</span> : null}
+                    <button className="btn-g" onClick={() => setEditing(e)}>Edit</button>
                   </div>
                 </div>
                 {e.notes       && <p className="hist-notes">{e.notes}</p>}
@@ -69,6 +73,8 @@ export default function TastingHistory() {
           </div>
         ))
       }
+
+      {editing && <EditTastingModal event={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }

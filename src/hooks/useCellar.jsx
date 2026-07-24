@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import {
   getWines, addWine, updateWine, deleteWine, consumeWine, importWines, exportCellar,
-  getTastingEvents, getStorageLocations, addStorageLocation, deleteStorageLocation,
+  getTastingEvents, updateTastingEvent, deleteTastingEvent,
+  getStorageLocations, addStorageLocation, deleteStorageLocation,
 } from '../lib/db.js'
 
 const Ctx = createContext(null)
@@ -59,6 +60,17 @@ export function CellarProvider({ children }) {
     setEvents(refreshed)
   }
 
+  const handleUpdateEvent = async (id, updates) => {
+    const updated = await updateTastingEvent(id, updates)
+    setEvents(prev => prev.map(e => e.id === id ? updated : e))
+    return updated
+  }
+
+  const handleDeleteEvent = async id => {
+    await deleteTastingEvent(id)
+    setEvents(prev => prev.filter(e => e.id !== id))
+  }
+
   const handleImport = async wines => {
     const added = await importWines(wines)
     setWines(prev => [...prev, ...added].sort((a, b) => a.name.localeCompare(b.name)))
@@ -87,6 +99,8 @@ export function CellarProvider({ children }) {
       updateWine:     handleUpdateWine,
       deleteWine:     handleDeleteWine,
       consume:        handleConsume,
+      updateEvent:    handleUpdateEvent,
+      deleteEvent:    handleDeleteEvent,
       importWines:    handleImport,
       exportCellar:   handleExport,
       addLocation:    handleAddLocation,

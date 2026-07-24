@@ -236,3 +236,12 @@ textarea.inp{min-height:76px;resize:vertical}
 .home-phil-card p{font-size:.88rem;color:var(--muted);line-height:1.55}
 .home-foot{text-align:center;padding:24px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--line)}
 @media(max-width:760px){.home-phil-grid{grid-template-columns:1fr}.home-hero-overlay h1{font-size:1.8rem}}
+/* ══ HOMEPAGE v4.2 — 4 cards, social link, wine club card ═══════════════ */
+.home-phil-grid{grid-template-columns:repeat(4,1fr)}
+.home-social-link{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.15);color:#fff;transition:background .12s}
+.home-social-link:hover{background:rgba(255,255,255,.28)}
+a.home-phil-card{text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s}
+a.home-phil-card:hover{transform:translateY(-3px);box-shadow:var(--sh2)}
+.home-phil-cta{margin-top:auto;padding-top:10px;font-size:.8rem;font-weight:600;color:var(--bur2)}
+@media(max-width:900px){.home-phil-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.home-phil-grid{grid-template-columns:1fr}}

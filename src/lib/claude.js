@@ -1,5 +1,6 @@
 // All calls go through /api/claude — a Vercel serverless function.
 // No API key is ever present in this file or in the browser bundle.
+import { dominantWsetProfile, LIKED_RATING_THRESHOLD } from './presets.js'
 
 async function callClaude(system, user, maxTokens = 900) {
   const res = await fetch('/api/claude', {
@@ -22,27 +23,25 @@ export function tasteProfile(wines, events, profile) {
   })
   const top = (o, n) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]).join(', ')
 
-  // WSET-scale averages from actual tasting history (the "mathematical taste profile")
-  const wsetMode = key => {
-    const counts = {}
-    events.forEach(e => { if (e[key]) counts[e[key]] = (counts[e[key]] || 0) + 1 })
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
-    return entries[0]?.[0] || 'unknown'
-  }
-  const tr = events.filter(e => e.rating).reduce((s, e) => s + e.rating, 0)
-  const tc = events.filter(e => e.rating).length
+  // Uses the SAME rating-filtered (3★+) profile shown on the Tasting History page —
+  // wines you didn't like are excluded so recommendations never chase what you've
+  // already told us you don't enjoy.
+  const dom = dominantWsetProfile(events)
+  const paletteLine = dom.sampleSize > 0
+    ? `Confirmed-liked taste profile (from ${dom.sampleSize} wines rated ${LIKED_RATING_THRESHOLD}★+) — Sweetness:${dom.sweetnessWset || 'unknown'}, Intensity:${dom.intensityWset || 'unknown'}, Body:${dom.bodyWset || 'unknown'}, Acidity:${dom.acidWset || 'unknown'}, Tannin:${dom.tanninWset || 'unknown'}.`
+    : 'No wines rated 3★+ yet — no confirmed taste profile; treat all suggestions as exploratory.'
 
   const budgetLine = profile?.budgetPerBottle ? ` Typical budget: $${profile.budgetPerBottle}/bottle — respect this when suggesting price ranges.` : ''
 
-  return `${wines.length} wines, ${wines.reduce((s, w) => s + (+w.qty || 0), 0)} bottles. Colors: ${top(bC, 2)}. Varietals: ${top(bV, 3)}. Regions: ${top(bR, 3)}. Avg rating from tasting history: ${tc ? (tr / tc).toFixed(1) : 'N/A'}/5. Taste profile from consumption (WSET scale) — Sweetness:${wsetMode('sweetnessWset')}, Intensity:${wsetMode('intensityWset')}, Body:${wsetMode('bodyWset')}, Acidity:${wsetMode('acidWset')}, Tannin:${wsetMode('tanninWset')}.${budgetLine} Recent tastings: ${events.slice(0, 4).map(e => `${e.wineName} ${e.wineVintage || ''}`).join(', ') || 'none'}.`
+  return `${wines.length} wines, ${wines.reduce((s, w) => s + (+w.qty || 0), 0)} bottles. Colors: ${top(bC, 2)}. Varietals: ${top(bV, 3)}. Regions: ${top(bR, 3)}. ${paletteLine}${budgetLine} Recent tastings: ${events.slice(0, 4).map(e => `${e.wineName} ${e.wineVintage || ''}`).join(', ') || 'none'}.`
 }
 
 export async function getRecommendations(wines, events, type, profile) {
   const inst = {
-    similar:    'Recommend 5 wines closely matching this taste profile, respecting the stated budget.',
-    outside:    'Recommend 5 high-quality wines intentionally outside this profile to stretch the palate, respecting the stated budget.',
+    similar:    'Recommend 5 wines closely matching the confirmed-liked taste profile, respecting the stated budget. Do not suggest wines whose dominant characteristics contradict what the user has rated poorly.',
+    outside:    'Recommend 5 high-quality wines intentionally outside the confirmed-liked profile to stretch the palate, respecting the stated budget. Still avoid recommending traits the user has previously rated poorly — "outside profile" means unexplored, not previously disliked.',
     drink_now:  'From the cellar list, identify the 5 most urgent to drink now (past/near peak first).',
-    varietal:   'Suggest 5 grape varieties NOT in this cellar using "if you like X try Y" logic, respecting the stated budget.',
+    varietal:   'Suggest 5 grape varieties NOT in this cellar using "if you like X try Y" logic based on the confirmed-liked profile, respecting the stated budget.',
   }
   const cl = type === 'drink_now' ? wines.map(w => `- ${w.name} ${w.vintage || ''}, drink ${w.drinkStart || '?'}-${w.drinkEnd || '?'}, qty:${w.qty}`).join('\n') : ''
   const raw = await callClaude(
